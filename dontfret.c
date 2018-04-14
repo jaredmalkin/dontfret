@@ -110,6 +110,10 @@ int main(int argc, char **argv)
       //The guitar signal fluctuates above and under 2047.
       if (input_signal > 2047 + distortion_value) input_signal= 2047 + distortion_value;
       if (input_signal < 2047 - distortion_value) input_signal= 2047 - distortion_value;
+
+      //generate output PWM signal 6 bits
+      bcm2835_pwm_set_data(1,input_signal & 0x3F);
+      bcm2835_pwm_set_data(0,input_signal >> 6);
     }
 
     //Delay if toggle switch on
@@ -125,11 +129,12 @@ int main(int argc, char **argv)
       DelayCounter++;
       if(DelayCounter >= Delay_Depth) DelayCounter = 0;
       output_signal = (Delay_Buffer[DelayCounter]+input_signal)>>1;
+
+      //generate output PWM signal 6 bits
+      bcm2835_pwm_set_data(1,output_signal & 0x3F);
+      bcm2835_pwm_set_data(0,output_signal >> 6);
     }
 
-    //generate output PWM signal 6 bits
-    bcm2835_pwm_set_data(1,input_signal & 0x3F);
-    bcm2835_pwm_set_data(0,input_signal >> 6);
   }
 
   //close all and exit
