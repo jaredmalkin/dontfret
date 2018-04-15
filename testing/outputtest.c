@@ -1,16 +1,28 @@
-#include <stdio.h>
-#include <bcm2835.h>
+// CC-by-www.Electrosmash.com Pedl-Pi open-source project
+// clean.c effect pedal, the signal is read by the ADC and written again using 2 PWM signals.
+
+#include <stdio.h><br>#include <bcm2835.h>
 
 // Define Input Pins
+#define PUSH1             RPI_GPIO_P1_08      //GPIO14
+#define PUSH2             RPI_V2_GPIO_P1_38   //GPIO20
 #define TOGGLE_SWITCH     RPI_V2_GPIO_P1_32   //GPIO12
 #define FOOT_SWITCH       RPI_GPIO_P1_10      //GPIO15
 #define LED               RPI_V2_GPIO_P1_36   //GPIO16
 
 uint32_t read_timer=0;
-uint32_t input_signal=0;
+uint32_t input_signal=2000;
+
+uint32_t read_timer2=0;
+uint32_t increment = 100;
+int freq = 5000;
+
+
 
 uint8_t FOOT_SWITCH_val;
 uint8_t TOGGLE_SWITCH_val;
+uint8_t PUSH1_val;
+uint8_t PUSH2_val;
 
 
 //main program
@@ -45,10 +57,14 @@ int main(int argc, char **argv)
     uint8_t miso[10] = { 0 };
 
     //Define GPIO pins configuration
+    bcm2835_gpio_fsel(PUSH1, BCM2835_GPIO_FSEL_INPT);           //PUSH1 button as input
+    bcm2835_gpio_fsel(PUSH2, BCM2835_GPIO_FSEL_INPT);           //PUSH2 button as input
     bcm2835_gpio_fsel(TOGGLE_SWITCH, BCM2835_GPIO_FSEL_INPT);   //TOGGLE_SWITCH as input
     bcm2835_gpio_fsel(FOOT_SWITCH, BCM2835_GPIO_FSEL_INPT);     //FOOT_SWITCH as input
     bcm2835_gpio_fsel(LED, BCM2835_GPIO_FSEL_OUTP);             //LED as output
 
+    bcm2835_gpio_set_pud(PUSH1, BCM2835_GPIO_PUD_UP);           //PUSH1 pull-up enabled
+    bcm2835_gpio_set_pud(PUSH2, BCM2835_GPIO_PUD_UP);           //PUSH2 pull-up enabled
     bcm2835_gpio_set_pud(TOGGLE_SWITCH, BCM2835_GPIO_PUD_UP);   //TOGGLE_SWITCH pull-up enabled
     bcm2835_gpio_set_pud(FOOT_SWITCH, BCM2835_GPIO_PUD_UP);     //FOOT_SWITCH pull-up enabled
 
@@ -56,24 +72,28 @@ int main(int argc, char **argv)
     {
     //Read the PUSH buttons every 50000 times (0.25s) to save resources.
     read_timer++;
+    read_timer2++;
     if (read_timer==50000)
     {
     read_timer=0;
+    uint8_t PUSH1_val = bcm2835_gpio_lev(PUSH1);
+    uint8_t PUSH2_val = bcm2835_gpio_lev(PUSH2);
     TOGGLE_SWITCH_val = bcm2835_gpio_lev(TOGGLE_SWITCH);
     uint8_t FOOT_SWITCH_val = bcm2835_gpio_lev(FOOT_SWITCH);
     bcm2835_gpio_write(LED,!FOOT_SWITCH_val); //light the effect when the footswitch is activated.
     }
 
+    //manually generate a sound wave manipulating input_signal
+    if(read_timer2==freq){
+      read_timer2=0;
+      input_signal = input_signal+increment;
+      increment = -increment;
+      freq = freq + 500;
+    }
+
     //read 12 bits ADC
-    bcm2835_spi_transfernb(mosi, miso, 3);
-
-    //print raw input before calculation
-    printf("miso[2]: " + miso[2] + "miso[1]: " + miso[1]);
-    input_signal = miso[2] + ((miso[1] & 0x0F) << 8);
-
-    //Print input for testing. input_signal should be right around 2047,
-    //with min voltage returning 0 and max voltage returning 4095.
-    printf("input: " + input_signal);
+    //bcm2835_spi_transfernb(mosi, miso, 3);
+    //input_signal = miso[2] + ((miso[1] & 0x0F) << 8);
 
     //**** CLEAN EFFECT ***///
     //Nothing to do, the input_signal goes directly to the PWM output.
