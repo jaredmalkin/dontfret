@@ -29,11 +29,11 @@ int main(int argc, char **argv)
 {
   // Start the BCM2835 Library to access GPIO.
   if (!bcm2835_init())
-  { printf("bcm2835_init failed. Are you running as root??\n");
+  { printf("bcm2835_init failed.\n");
   return 1;}
   // Start the SPI BUS.
   if (!bcm2835_spi_begin())
-  {printf("bcm2835_spi_begin failed. Are you running as root??\n");
+  {printf("bcm2835_spi_begin failed.\n");
   return 1;}
 
   //define PWM
@@ -55,17 +55,13 @@ int main(int argc, char **argv)
   uint8_t mosi[10] = { 0x01, 0x00, 0x00 }; //12 bit ADC read 0x08 ch0, - 0c for ch1
   uint8_t miso[10] = { 0 };
 
-  //Define GPIO pins configuration
-  //bcm2835_gpio_fsel(PUSH1, BCM2835_GPIO_FSEL_INPT); 			//PUSH1 button as input
-  //bcm2835_gpio_fsel(PUSH2, BCM2835_GPIO_FSEL_INPT); 			//PUSH2 button as input
+  //Define GPIO pins
   bcm2835_gpio_fsel(TOGGLE_SWITCH, BCM2835_GPIO_FSEL_INPT);	//TOGGLE_SWITCH as input
   bcm2835_gpio_fsel(FOOT_SWITCH, BCM2835_GPIO_FSEL_INPT); 	//FOOT_SWITCH as input
   bcm2835_gpio_fsel(LED, BCM2835_GPIO_FSEL_OUTP);				//LED as output
 
-  //bcm2835_gpio_set_pud(PUSH1, BCM2835_GPIO_PUD_UP);           //PUSH1 pull-up enabled
-  //bcm2835_gpio_set_pud(PUSH2, BCM2835_GPIO_PUD_UP);           //PUSH2 pull-up enabled
-  bcm2835_gpio_set_pud(TOGGLE_SWITCH, BCM2835_GPIO_PUD_UP);   //TOGGLE_SWITCH pull-up enabled
-  bcm2835_gpio_set_pud(FOOT_SWITCH, BCM2835_GPIO_PUD_UP);     //FOOT_SWITCH pull-up enabled
+  bcm2835_gpio_set_pud(TOGGLE_SWITCH, BCM2835_GPIO_PUD_UP);   //TOGGLE_SWITCH set pull-up
+  bcm2835_gpio_set_pud(FOOT_SWITCH, BCM2835_GPIO_PUD_UP);     //FOOT_SWITCH set pull-up
 
   while(1) //Main Loop
   {
@@ -79,26 +75,12 @@ int main(int argc, char **argv)
     if (read_timer==50000)
     {
       read_timer=0;
-      //uint8_t PUSH1_val = bcm2835_gpio_lev(PUSH1);
-      //uint8_t PUSH2_val = bcm2835_gpio_lev(PUSH2);
+
       TOGGLE_SWITCH_val = bcm2835_gpio_lev(TOGGLE_SWITCH);
       uint8_t FOOT_SWITCH_val = bcm2835_gpio_lev(FOOT_SWITCH);
-      //light the effect when the footswitch is activated.
+      //turn on LED when footswitch is activated.
       bcm2835_gpio_write(LED,!FOOT_SWITCH_val);
 
-      /* ----PUSH1 and PUSH2 functionality------
-      //update booster_value when the PUSH1 or 2 buttons are pushed.
-      if (PUSH1_val==0) //less distortion
-      { bcm2835_delay(100); //100ms delay for buttons debouncing
-        if (distortion_value<2047) distortion_value=distortion_value+10;
-        if (Delay_Depth<DELAY_MAX)Delay_Depth=Delay_Depth+50000;
-      }
-      else if (PUSH2_val==0) //more distortion
-      {bcm2835_delay(100); //100ms delay for buttons debouncing.
-        if (distortion_value>0) distortion_value=distortion_value-10;
-        if (Delay_Depth>DELAY_MIN)Delay_Depth=Delay_Depth-50000;
-      }
-      */
     }
 
     //Distortion if toggle switch off
