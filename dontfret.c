@@ -2,13 +2,10 @@
 #include <stdio.h>
 
 // Define Input Pins
-//#define PUSH1 			RPI_GPIO_P1_08  	//GPIO14
-//#define PUSH2 			RPI_V2_GPIO_P1_38  	//GPIO20
 #define TOGGLE_SWITCH 	RPI_V2_GPIO_P1_32 	//GPIO12
 #define FOOT_SWITCH 	RPI_GPIO_P1_10 		//GPIO15
 #define LED   			RPI_V2_GPIO_P1_07 	//GPIO4
 #define DELAY_MAX 800000
-#define DELAY_MIN 0
 
 uint32_t Delay_Buffer[DELAY_MAX];
 uint32_t DelayCounter = 0;
@@ -22,8 +19,6 @@ uint32_t delay;
 
 uint8_t FOOT_SWITCH_val;
 uint8_t TOGGLE_SWITCH_val;
-//uint8_t PUSH1_val;
-//uint8_t PUSH2_val;
 
 int main(int argc, char **argv)
 {
@@ -56,14 +51,10 @@ int main(int argc, char **argv)
   uint8_t miso[10] = { 0 };
 
   //Define GPIO pins configuration
-  //bcm2835_gpio_fsel(PUSH1, BCM2835_GPIO_FSEL_INPT); 			//PUSH1 button as input
-  //bcm2835_gpio_fsel(PUSH2, BCM2835_GPIO_FSEL_INPT); 			//PUSH2 button as input
   bcm2835_gpio_fsel(TOGGLE_SWITCH, BCM2835_GPIO_FSEL_INPT);	//TOGGLE_SWITCH as input
   bcm2835_gpio_fsel(FOOT_SWITCH, BCM2835_GPIO_FSEL_INPT); 	//FOOT_SWITCH as input
   bcm2835_gpio_fsel(LED, BCM2835_GPIO_FSEL_OUTP);				//LED as output
 
-  //bcm2835_gpio_set_pud(PUSH1, BCM2835_GPIO_PUD_UP);           //PUSH1 pull-up enabled
-  //bcm2835_gpio_set_pud(PUSH2, BCM2835_GPIO_PUD_UP);           //PUSH2 pull-up enabled
   bcm2835_gpio_set_pud(TOGGLE_SWITCH, BCM2835_GPIO_PUD_UP);   //TOGGLE_SWITCH pull-up enabled
   bcm2835_gpio_set_pud(FOOT_SWITCH, BCM2835_GPIO_PUD_UP);     //FOOT_SWITCH pull-up enabled
 
@@ -72,51 +63,35 @@ int main(int argc, char **argv)
     //read 12 bits ADC
     bcm2835_spi_transfernb(mosi, miso, 3);
     input_signal = miso[2] + ((miso[1] & 0x0F) << 8);
-    //input_signal = input_signal + 300;
 
-    //Read the PUSH buttons every 50000 times (0.25s) to save resources.
+    //Read buttons every 50000 times (0.25s)
     read_timer++;
     if (read_timer==50000)
     {
       read_timer=0;
-      //uint8_t PUSH1_val = bcm2835_gpio_lev(PUSH1);
-      //uint8_t PUSH2_val = bcm2835_gpio_lev(PUSH2);
       TOGGLE_SWITCH_val = bcm2835_gpio_lev(TOGGLE_SWITCH);
       uint8_t FOOT_SWITCH_val = bcm2835_gpio_lev(FOOT_SWITCH);
       //light the effect when the footswitch is activated.
-      //uint8_t FOOT_SWITCH_val = 1;
       bcm2835_gpio_write(LED,!FOOT_SWITCH_val);
 
-      /* ----PUSH1 and PUSH2 functionality------
-      //update booster_value when the PUSH1 or 2 buttons are pushed.
-      if (PUSH1_val==0) //less distortion
-      { bcm2835_delay(100); //100ms delay for buttons debouncing
-        if (distortion_value<2047) distortion_value=distortion_value+10;
-        if (Delay_Depth<DELAY_MAX)Delay_Depth=Delay_Depth+50000;
-      }
-      else if (PUSH2_val==0) //more distortion
-      {bcm2835_delay(100); //100ms delay for buttons debouncing.
-        if (distortion_value>0) distortion_value=distortion_value-10;
-        if (Delay_Depth>DELAY_MIN)Delay_Depth=Delay_Depth-50000;
-      }
-      */
+
     }
 
-    //Distortion if toggle switch off
+    //DISTORTION if toggle switch off
     if(TOGGLE_SWITCH_val == 0){
       //////// This code comes from distortion.c on
       //////// https://www.electrosmash.com/forum/pedal-pi/216-distortion-effect-guitar-pedal?lang=en
-      //**** FUZZ EFFECT ***///
-      //The input_signal is clipped to the maximum value when it reaches the distortion_value threshold.
+      //**** DISTORTION EFFECT ***///
+      //The input_signal is clipped to a threshold when it reaches the distortion_value threshold.
       //The guitar signal fluctuates above and under 2047.
       if (input_signal > 2047 + distortion_value) input_signal= 2047 + distortion_value;
       if (input_signal < 2047 - distortion_value) input_signal= 2047 - distortion_value;
-      
+
       bcm2835_pwm_set_data(1,input_signal & 0x3F);
       bcm2835_pwm_set_data(0,input_signal >> 6);
     }
 
-    //Delay if toggle switch on
+    //DELAY if toggle switch on
     else{
       /////// This code comes from delay.c on
       /////// https://www.electrosmash.com/forum/pedal-pi/219-delay-guitar-effect-pedal?lang=en
@@ -124,7 +99,6 @@ int main(int argc, char **argv)
       //The input_signal is saved in a "circular" buffer (Delay_Buffer) to be recovered later.
       //The delayed signal is added again to the current guitar input so you can hear the original and delayed at the
       //same time
-      //With PUSH1 and PUSH2 the delay time is controlled.
       Delay_Buffer[DelayCounter] = input_signal;
       DelayCounter++;
       if(DelayCounter >= Delay_Depth) DelayCounter = 0;
